@@ -1,0 +1,111 @@
+name: Test basic usage - mockoon-cli action
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create mockoon data file
+        run: |
+          cat > /tmp/mockoon-data.json << 'EOF'
+          {
+            "uuid": "a4b6c8d0-e2f4-4a6b-8c0d-e2f4a6b8c0d2",
+            "lastMigration": 32,
+            "name": "Test API",
+            "endpointPrefix": "",
+            "latency": 0,
+            "port": 3000,
+            "hostname": "",
+            "routes": [
+              {
+                "uuid": "b5c7d9e1-f3a5-4b7c-9d1e-f3a5b7c9d1e3",
+                "documentation": "",
+                "method": "get",
+                "endpoint": "health",
+                "responses": [
+                  {
+                    "uuid": "c6d8e0f2-a4b6-4c8d-0e2f-a4b6c8d0e2f4",
+                    "body": "{\"status\": \"ok\"}",
+                    "latency": 0,
+                    "statusCode": 200,
+                    "label": "",
+                    "headers": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "filePath": "",
+                    "sendFileAsBody": false,
+                    "rules": [],
+                    "rulesOperator": "OR",
+                    "disableTemplating": false,
+                    "fallbackTo404": false,
+                    "default": true
+                  }
+                ],
+                "enabled": true,
+                "randomResponse": false,
+                "sequentialResponse": false
+              }
+            ],
+            "proxyMode": false,
+            "proxyHost": "",
+            "proxyRemovePrefix": false,
+            "tlsOptions": {
+              "enabled": false,
+              "type": "CERT",
+              "pfxPath": "",
+              "certPath": "",
+              "keyPath": "",
+              "caPath": "",
+              "passphrase": ""
+            },
+            "cors": true,
+            "headers": [],
+            "proxyReqHeaders": [],
+            "proxyResHeaders": [],
+            "data": [],
+            "folders": [],
+            "rootChildren": [
+              {
+                "type": "route",
+                "uuid": "b5c7d9e1-f3a5-4b7c-9d1e-f3a5b7c9d1e3"
+              }
+            ]
+          }
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          version: "latest"
+          data-file: /tmp/mockoon-data.json
+          port: "3000"
+
+      - name: Wait for server to start
+        run: sleep 5
+
+      - name: Assert server is responding
+        run: |
+          echo "Checking if mockoon server is running on port 3000..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/health || echo "000")
+          echo "HTTP status code: $RESPONSE"
+          if [ "$RESPONSE" != "200" ]; then
+            echo "FAIL: expected HTTP 200 from mock server, got $RESPONSE"
+            exit 1
+          fi
+          echo "PASS: mock server responded with 200"
+
+      - name: Assert response body
+        run: |
+          BODY=$(curl -s http://localhost:3000/health)
+          echo "Response body: $BODY"
+          if echo "$BODY" | grep -q '"status"'; then
+            echo "PASS: response body contains expected content"
+          else
+            echo "FAIL: response body does not contain expected content"
+            exit 1
+          fi
