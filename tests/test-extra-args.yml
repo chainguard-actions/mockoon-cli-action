@@ -1,0 +1,93 @@
+name: Test extra-args input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create minimal Mockoon data file
+        run: |
+          cat > /tmp/mock-api.json << 'EOF'
+          {
+            "uuid": "a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c9d",
+            "lastMigration": 32,
+            "name": "Test API",
+            "endpointPrefix": "",
+            "latency": 0,
+            "port": 3001,
+            "hostname": "",
+            "routes": [
+              {
+                "uuid": "b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e",
+                "documentation": "",
+                "method": "get",
+                "endpoint": "health",
+                "responses": [
+                  {
+                    "uuid": "c6d7e8f9-a0b1-2c3d-4e5f-6a7b8c9d0e1f",
+                    "body": "{\"status\":\"ok\"}",
+                    "latency": 0,
+                    "statusCode": 200,
+                    "label": "",
+                    "headers": [],
+                    "bodyType": "INLINE",
+                    "filePath": "",
+                    "databucketID": "",
+                    "sendFileAsBody": false,
+                    "rules": [],
+                    "rulesOperator": "OR",
+                    "disableTemplating": false,
+                    "fallbackTo404": false,
+                    "default": true,
+                    "crudKey": "id",
+                    "callbacks": []
+                  }
+                ],
+                "enabled": true,
+                "responseMode": null,
+                "type": "http"
+              }
+            ],
+            "proxyMode": false,
+            "proxyHost": "",
+            "proxyRemovePrefix": false,
+            "tlsOptions": {
+              "enabled": false,
+              "type": "CERT",
+              "pfxPath": "",
+              "certPath": "",
+              "keyPath": "",
+              "caPath": "",
+              "passphrase": ""
+            },
+            "cors": true,
+            "headers": [],
+            "proxyReqHeaders": [],
+            "proxyResHeaders": [],
+            "data": [],
+            "callbacks": [],
+            "folders": []
+          }
+          EOF
+
+      - id: action
+        uses: .
+        with:
+          version: latest
+          data-file: /tmp/mock-api.json
+          port: "3001"
+          extra-args: "--faker-locale en_US"
+
+      - name: Wait for Mockoon to start
+        run: sleep 5
+
+      - name: Assert Mockoon is running on port 3001
+        run: |
+          echo "Checking if Mockoon is running on port 3001..."
+          if ! curl -sf http://localhost:3001/health; then
+            echo "FAIL: Mockoon did not respond on port 3001"
+            exit 1
+          fi
+          echo "PASS: Mockoon responded successfully"

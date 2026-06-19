@@ -1,0 +1,54 @@
+name: Test basic usage - local data file
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Start Mockoon CLI with local data file
+        uses: .
+        with:
+          version: "latest"
+          data-file: "${{ github.workspace }}/tests/fixtures/mock-api.json"
+          port: "3000"
+
+      - name: Wait for server to be ready
+        run: |
+          echo "Waiting for Mockoon server to start..."
+          SERVER_UP=false
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/health > /dev/null 2>&1; then
+              echo "Server is up after $i seconds"
+              SERVER_UP=true
+              break
+            fi
+            echo "Attempt $i: server not ready yet, waiting..."
+            sleep 1
+          done
+          if [ "$SERVER_UP" != "true" ]; then
+            echo "FAIL: Server did not start within 30 seconds"
+            exit 1
+          fi
+
+      - name: Assert server responds on port 3000
+        run: |
+          RESPONSE=$(curl -sf http://localhost:3000/health)
+          echo "Response: $RESPONSE"
+          if [ -z "$RESPONSE" ]; then
+            echo "FAIL: No response from Mockoon server on port 3000"
+            exit 1
+          fi
+          echo "PASS: Mockoon server responded on port 3000"
+
+      - name: Assert response body contains expected status
+        run: |
+          RESPONSE=$(curl -sf http://localhost:3000/health)
+          echo "Response: $RESPONSE"
+          if echo "$RESPONSE" | grep -q '"status"'; then
+            echo "PASS: Response contains expected 'status' field"
+          else
+            echo "FAIL: Response does not contain expected 'status' field"
+            exit 1
+          fi

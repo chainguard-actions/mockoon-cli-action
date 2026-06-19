@@ -1,0 +1,54 @@
+name: Test pinned version
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Start Mockoon CLI with pinned version
+        uses: .
+        with:
+          version: "9.0.0"
+          data-file: "${{ github.workspace }}/tests/fixtures/mock-api.json"
+          port: "3000"
+
+      - name: Assert Mockoon CLI is installed at pinned version
+        run: |
+          INSTALLED_VERSION=$(mockoon-cli --version 2>&1 || true)
+          echo "Installed version: $INSTALLED_VERSION"
+          if echo "$INSTALLED_VERSION" | grep -q "9.0.0"; then
+            echo "PASS: Mockoon CLI version 9.0.0 is installed"
+          else
+            echo "FAIL: Expected version 9.0.0 but got: $INSTALLED_VERSION"
+            exit 1
+          fi
+
+      - name: Wait for server to be ready
+        run: |
+          echo "Waiting for Mockoon server to start..."
+          SERVER_UP=false
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/health > /dev/null 2>&1; then
+              echo "Server is up after $i seconds"
+              SERVER_UP=true
+              break
+            fi
+            echo "Attempt $i: server not ready yet, waiting..."
+            sleep 1
+          done
+          if [ "$SERVER_UP" != "true" ]; then
+            echo "FAIL: Server did not start within 30 seconds"
+            exit 1
+          fi
+
+      - name: Assert server responds
+        run: |
+          RESPONSE=$(curl -sf http://localhost:3000/health)
+          echo "Response: $RESPONSE"
+          if [ -z "$RESPONSE" ]; then
+            echo "FAIL: No response from Mockoon server"
+            exit 1
+          fi
+          echo "PASS: Mockoon server responded successfully"

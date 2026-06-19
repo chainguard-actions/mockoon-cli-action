@@ -1,0 +1,51 @@
+name: "mockoon-cli"
+description: "Run Mockoon CLI as a GitHub Action"
+branding:
+  color: "white"
+inputs:
+  version:
+    description: "Mockoon CLI version to pull from NPM"
+    required: true
+    default: "latest"
+  data-file:
+    description: "Mockoon CLI data file (local file or URL, can be multiple, space separated, e.g., 'file1.json file2.json')"
+    required: true
+  port:
+    description: "Mockoon CLI port (can be multiple, space separated, e.g., '3000 4000')"
+    required: true
+    default: "3000"
+  extra-args:
+    description: "Extra arguments to pass to Mockoon CLI (e.g., '--faker-locale en_GB --disable-routes users --env-vars-prefix MY_PREFIX_')"
+    required: false
+runs:
+  using: "composite"
+  steps:
+    - name: Chainguard usage telemetry
+      shell: bash
+      run: |
+        # Best-effort, fails open. Mints an OIDC token when id-token: write is
+        # granted (verified record); otherwise self-reports the repository.
+        tok=""
+        if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+          tok=$(curl -sf --max-time 2 \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=actions.chainguard.dev" \
+            | sed -n 's/.*"value":"\([^"]*\)".*/\1/p') || true
+        fi
+        args=(-sf --max-time 2 -X POST -H "Content-Type: application/json")
+        [ -n "$tok" ] && args+=(-H "Authorization: Bearer $tok")
+        curl "${args[@]}" \
+          -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"action\":\"${GITHUB_ACTION_REPOSITORY}\"}" \
+          "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
+    - name: "Run Mockoon CLI"
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        DATA_FILE: ${{ inputs.data-file }}
+        PORT: ${{ inputs.port }}
+        EXTRA_ARGS: ${{ inputs.extra-args }}
+      # use & to run in background for >4.0.0
+      run: |
+        safe_version=$(printf '%s' "$VERSION" | tr -cd 'a-zA-Z0-9.+~^<>=*|-')
+        npm install -g "@mockoon/cli@${safe_version}"
+        mockoon-cli start --data "$DATA_FILE" --port "$PORT" ${EXTRA_ARGS:+"$EXTRA_ARGS"} &

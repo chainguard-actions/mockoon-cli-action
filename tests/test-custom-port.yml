@@ -1,0 +1,51 @@
+name: Test custom port
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Start Mockoon CLI on custom port 4500
+        uses: .
+        with:
+          version: "latest"
+          data-file: "${{ github.workspace }}/tests/fixtures/mock-api.json"
+          port: "4500"
+
+      - name: Wait for server to be ready on port 4500
+        run: |
+          echo "Waiting for Mockoon server to start on port 4500..."
+          SERVER_UP=false
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4500/health > /dev/null 2>&1; then
+              echo "Server is up after $i seconds"
+              SERVER_UP=true
+              break
+            fi
+            echo "Attempt $i: server not ready yet, waiting..."
+            sleep 1
+          done
+          if [ "$SERVER_UP" != "true" ]; then
+            echo "FAIL: Server did not start on port 4500 within 30 seconds"
+            exit 1
+          fi
+
+      - name: Assert server responds on custom port 4500
+        run: |
+          RESPONSE=$(curl -sf http://localhost:4500/health)
+          echo "Response: $RESPONSE"
+          if [ -z "$RESPONSE" ]; then
+            echo "FAIL: No response from Mockoon server on port 4500"
+            exit 1
+          fi
+          echo "PASS: Mockoon server responded on custom port 4500"
+
+      - name: Assert default port 3000 is NOT in use
+        run: |
+          if curl -sf http://localhost:3000/health > /dev/null 2>&1; then
+            echo "FAIL: Port 3000 should not be in use but responded"
+            exit 1
+          fi
+          echo "PASS: Port 3000 is not in use as expected"
