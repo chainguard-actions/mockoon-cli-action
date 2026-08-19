@@ -40,12 +40,36 @@ runs:
     - name: "Run Mockoon CLI"
       shell: bash
       env:
-        VERSION: ${{ inputs.version }}
-        DATA_FILE: ${{ inputs.data-file }}
-        PORT: ${{ inputs.port }}
-        EXTRA_ARGS: ${{ inputs.extra-args }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_DATA_FILE: ${{ inputs.data-file }}
+        INPUT_PORT: ${{ inputs.port }}
+        INPUT_EXTRA_ARGS: ${{ inputs.extra-args }}
       # use & to run in background for >4.0.0
       run: |
-        safe_version=$(printf '%s' "$VERSION" | tr -cd 'a-zA-Z0-9.+~^<>=*|-')
-        npm install -g "@mockoon/cli@${safe_version}"
-        mockoon-cli start --data "$DATA_FILE" --port "$PORT" ${EXTRA_ARGS:+"$EXTRA_ARGS"} &
+        # Validate version: only allow characters valid in npm versions/dist-tags
+        # (alphanumeric, dots, hyphens, underscores, and semver range chars ^ ~ > < = * +)
+        if ! printf '%s' "$INPUT_VERSION" | grep -qE '^[a-zA-Z0-9._+\-^~<>=*]+$'; then
+          echo "Error: Invalid version string: '$INPUT_VERSION'" >&2
+          exit 1
+        fi
+        npm install -g "@mockoon/cli@$INPUT_VERSION"
+
+        data_files=()
+        if [ -n "$INPUT_DATA_FILE" ]; then
+          while IFS= read -r -d '' t; do data_files+=("$t"); done \
+            < <(printf '%s' "$INPUT_DATA_FILE" | xargs printf '%s\0')
+        fi
+
+        ports=()
+        if [ -n "$INPUT_PORT" ]; then
+          while IFS= read -r -d '' t; do ports+=("$t"); done \
+            < <(printf '%s' "$INPUT_PORT" | xargs printf '%s\0')
+        fi
+
+        extra_args=()
+        if [ -n "$INPUT_EXTRA_ARGS" ]; then
+          while IFS= read -r -d '' t; do extra_args+=("$t"); done \
+            < <(printf '%s' "$INPUT_EXTRA_ARGS" | xargs printf '%s\0')
+        fi
+
+        mockoon-cli start --data "${data_files[@]}" --port "${ports[@]}" "${extra_args[@]}" &
