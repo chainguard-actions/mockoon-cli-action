@@ -1,4 +1,4 @@
-name: Test basic usage - default port
+name: Test specific CLI version
 on:
   workflow_dispatch:
 jobs:
@@ -7,12 +7,23 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Run Mockoon CLI action
+      - name: Run Mockoon CLI action with specific version
         uses: .
         with:
-          version: "latest"
+          version: "9.1.0"
           data-file: "./tests/fixtures/mockoon-data.json"
           port: "3000"
+
+      - name: Assert correct version is installed
+        run: |
+          INSTALLED_VERSION=$(mockoon-cli --version 2>&1 || true)
+          echo "installed version: $INSTALLED_VERSION"
+          if echo "$INSTALLED_VERSION" | grep -q "9.1.0"; then
+            echo "PASS: correct version 9.1.0 is installed"
+          else
+            echo "FAIL: expected version 9.1.0 but got: $INSTALLED_VERSION"
+            exit 1
+          fi
 
       - name: Wait for server to be ready
         run: |
@@ -26,23 +37,12 @@ jobs:
             sleep 2
           done
 
-      - name: Assert server responds on port 3000
+      - name: Assert server responds correctly
         run: |
           RESPONSE=$(curl -sf http://localhost:3000/hello)
           echo "actual response: $RESPONSE"
           if [ -z "$RESPONSE" ]; then
-            echo "FAIL: expected a response from Mockoon server on port 3000 but got nothing"
+            echo "FAIL: expected a response from Mockoon server but got nothing"
             exit 1
           fi
-          echo "PASS: server responded on port 3000"
-
-      - name: Assert response contains expected message
-        run: |
-          RESPONSE=$(curl -sf http://localhost:3000/hello)
-          echo "actual response: $RESPONSE"
-          if echo "$RESPONSE" | grep -q "hello world"; then
-            echo "PASS: response contains 'hello world'"
-          else
-            echo "FAIL: expected response to contain 'hello world', got: $RESPONSE"
-            exit 1
-          fi
+          echo "PASS: server responded successfully with version 9.1.0"

@@ -1,0 +1,67 @@
+[
+  {
+    "uuid": "a4b3c2d1-e5f6-7890-abcd-ef1234567890",
+    "lastMigration": 32,
+    "name": "Test API",
+    "endpointPrefix": "",
+    "latency": 0,
+    "port": 3000,
+    "hostname": "",
+    "routes": [
+      {
+        "uuid": "b1c2d3e4-f5a6-7890-bcde-f12345678901",
+        "documentation": "",
+        "method": "get",
+        "endpoint": "health",
+        "responses": [
+          {
+            "uuid": "c2d3e4f5-a6b7-8901-cdef-123456789012",
+            "body": "{\"status\": \"ok\"}",
+            "latency": 0,
+            "statusCode": 200,
+            "label": "",
+            "headers": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "filePath": "",
+            "sendFileAsBody": false,
+            "rules": [],
+            "rulesOperator": "OR",
+            "disableTemplating": false,
+            "fallbackTo404": false,
+            "default": true
+          }
+        ],
+        "enabled": true,
+        "responseMode": null
+      }
+    ],
+    "proxyMode": false,
+    "proxyHost": "",
+    "proxyRemovePrefix": false,
+    "tlsOptions": {
+      "enabled": false,
+      "type": "CERT",
+      "pfxPath": "",
+      "certPath": "",
+      "keyPath": "",
+      "caPath": "",
+      "passphrase": ""
+    },
+    "cors": true,
+    "headers": [],
+    "proxyReqHeaders": [],
+    "proxyResHeaders": [],
+    "data": [],
+    "folders": [],
+    "rootChildren": [
+      {
+        "type": "route",
+        "uuid": "b1c2d3e4-f5a6-7890-bcde-f12345678901"
+      }
+    ]
+  }
+]
